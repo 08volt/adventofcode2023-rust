@@ -1,67 +1,51 @@
-use std::{fs::read_to_string, str::FromStr};
+use std::fs::read_to_string;
 
 fn main() {
     if let Ok(input) = read_to_string("input.txt") {
         let total: (i128, i128) = input
             .lines()
-            .filter_map(|l| l.parse::<History>().ok())
-            .map(|h| (h.last(), h.first()))
+            .filter_map(|l| <Vec<i128> as History<i128>>::from_str(l).ok())
+            .map(|h| (h.after_last(), h.before_first()))
             .fold((0, 0), |(a, b), (c, d)| (a + c, b + d));
 
         println!("{:?}", total)
     }
 }
-
-struct History {
-    sequence: Vec<i128>,
+pub trait History<T> {
+    fn after_last(&self) -> T;
+    fn before_first(&self) -> T;
+    fn create_diff_sequence(&self) -> Vec<T>;
+    fn from_str(s: &str) -> Result<Vec<T>, String>;
 }
 
-impl History {
-    fn last(&self) -> i128 {
-        Self::add_to_sequence(&self.sequence)
-    }
-
-    fn first(&self) -> i128 {
-        Self::add_to_left(&self.sequence)
-    }
-
-    fn add_to_left(sequence: &Vec<i128>) -> i128 {
-        if sequence.len() == 1 || sequence.windows(2).all(|w| w[0] == w[1]) {
-            return sequence.first().unwrap_or(&0).clone();
+impl History<i128> for Vec<i128> {
+    fn after_last(&self) -> i128 {
+        match self.len() {
+            0 => 0,
+            1 => self.first().unwrap_or(&0).clone(),
+            _ if self.windows(2).all(|w| w[0] == w[1]) => self.first().unwrap_or(&0).clone(),
+            _ => Self::after_last(&Self::create_diff_sequence(self)) + self.last().unwrap_or(&0),
         }
-
-        let prev = Self::add_to_left(&Self::create_diff_sequence(sequence));
-
-        return sequence.first().unwrap_or(&0) - prev;
     }
-
-    fn add_to_sequence(sequence: &Vec<i128>) -> i128 {
-        if sequence.len() == 1 || sequence.windows(2).all(|w| w[0] == w[1]) {
-            return sequence.first().unwrap_or(&0).clone();
+    fn before_first(&self) -> i128 {
+        match self.len() {
+            0 => 0,
+            1 => self.first().unwrap_or(&0).clone(),
+            _ if self.windows(2).all(|w| w[0] == w[1]) => self.first().unwrap_or(&0).clone(),
+            _ => self.first().unwrap_or(&0) - Self::before_first(&Self::create_diff_sequence(self)),
         }
-
-        let prev = Self::add_to_sequence(&Self::create_diff_sequence(sequence));
-
-        return sequence.last().unwrap_or(&0) + prev;
     }
 
-    fn create_diff_sequence(sequence: &Vec<i128>) -> Vec<i128> {
-        return sequence.windows(2).map(|w| w[1] - w[0]).collect();
+    fn create_diff_sequence(&self) -> Vec<i128> {
+        self.windows(2).map(|w| w[1] - w[0]).collect()
     }
-}
 
-#[derive(Debug)]
-struct HistoryParseError {}
-
-impl FromStr for History {
-    type Err = HistoryParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Vec<i128>, String> {
         let seq: Vec<i128> = s
             .trim()
             .split(" ")
             .filter_map(|n| n.parse::<i128>().ok())
             .collect();
-        Ok(History { sequence: seq })
+        Ok(seq)
     }
 }
