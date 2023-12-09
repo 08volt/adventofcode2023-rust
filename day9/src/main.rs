@@ -15,7 +15,7 @@ pub trait History<T> {
     fn after_last(&self) -> T;
     fn before_first(&self) -> T;
     fn create_diff_sequence(&self) -> Vec<T>;
-    fn from_str(s: &str) -> Result<Vec<T>, String>;
+    fn from_str(s: &str) -> Result<Vec<T>, ()>;
 }
 
 impl History<i128> for Vec<i128> {
@@ -40,7 +40,7 @@ impl History<i128> for Vec<i128> {
         self.windows(2).map(|w| w[1] - w[0]).collect()
     }
 
-    fn from_str(s: &str) -> Result<Vec<i128>, String> {
+    fn from_str(s: &str) -> Result<Vec<i128>, ()> {
         let seq: Vec<i128> = s
             .trim()
             .split(" ")
