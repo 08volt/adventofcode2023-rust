@@ -20,10 +20,8 @@ fn main() {
 }
 
 fn solve_day_13_part1(input: &str) -> u32 {
-    let patterns: Vec<&str> = input.split("\n\n").collect();
-
-    patterns
-        .iter()
+    input
+        .split("\n\n")
         .map(|p| {
             let rows: Vec<String> = p.lines().map(|l| l.to_string()).collect();
             let cols = transpose(&rows);
@@ -42,10 +40,8 @@ fn solve_day_13_part1(input: &str) -> u32 {
 }
 
 fn solve_day_13_part2(input: &str) -> u32 {
-    let patterns: Vec<&str> = input.split("\n\n").collect();
-
-    patterns
-        .iter()
+    input
+        .split("\n\n")
         .map(|p| {
             let rows: Vec<String> = p.lines().map(|l| l.to_string()).collect();
             let cols = transpose(&rows);
