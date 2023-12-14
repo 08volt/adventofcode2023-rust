@@ -42,8 +42,12 @@ fn solve_day_14_part2(input: &str) -> u64 {
 
     let mut res = HashMap::<String, Vec<u32>>::new();
 
-    for i in 0..1000 {
+    for i in 0..10000 {
         let k = Into::<String>::into(&m);
+
+        if res.contains_key(&k) && res.get(&k).unwrap().len() > 2 {
+            break;
+        }
 
         res.entry(k).or_insert(Vec::new()).push(i);
         m.cycle();
