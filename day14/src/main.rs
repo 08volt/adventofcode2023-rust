@@ -41,16 +41,14 @@ fn solve_day_14_part2(input: &str) -> u64 {
     // println!("original\n{}", Into::<String>::into(&m));
 
     let mut res = HashMap::<String, Vec<u32>>::new();
+    let mut k = Into::<String>::into(&m);
+    let mut i = 0;
 
-    for i in 0..10000 {
-        let k = Into::<String>::into(&m);
-
-        if res.contains_key(&k) && res.get(&k).unwrap().len() > 2 {
-            break;
-        }
-
+    while !res.contains_key(&k) || res.get(&k).unwrap().len() <= 2 {
         res.entry(k).or_insert(Vec::new()).push(i);
         m.cycle();
+        k = Into::<String>::into(&m);
+        i += 1;
     }
 
     let offset = res
