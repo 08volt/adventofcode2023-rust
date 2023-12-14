@@ -6,17 +6,17 @@ fn main() {
     let now_1 = Instant::now();
     let part1 = solve_day_14_part1(INPUT);
 
-    println!("part1 -> {}", part1);
+    println!("part 1 - Result -> {}", part1);
 
     let elapsed_1 = now_1.elapsed();
     println!("Part 1 - Elapsed: {:.2?}", elapsed_1);
     let now_2 = Instant::now();
     let part2 = solve_day_14_part2(INPUT);
 
-    println!("part2 -> {}", part2);
+    println!("part2 - Result -> {}", part2);
 
     let elapsed_2 = now_2.elapsed();
-    println!("Part2 - Elapsed: {:.2?}", elapsed_2);
+    println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
 }
 
 fn compute_weight(m: &String) -> u64 {
@@ -97,8 +97,7 @@ fn solve_day_14_part1(input: &str) -> u64 {
         .map(|(j, r)| {
             // println!("\n{:?}", r);
             // println!("{:?}", next_pos_index);
-            let sum = r
-                .iter()
+            r.iter()
                 .enumerate()
                 .map(|(i, c)| match c {
                     'O' => {
@@ -112,10 +111,9 @@ fn solve_day_14_part1(input: &str) -> u64 {
                     }
                     _ => 0,
                 })
-                .sum::<u64>();
+                .sum::<u64>()
             // println!("{:?}", next_pos_index);
             // println!("{}", sum);
-            sum
         })
         .sum::<u64>()
 }
