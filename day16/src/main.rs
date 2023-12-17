@@ -7,7 +7,7 @@ const INPUT: &str = include_str!("../input.txt");
 
 fn main() {
     let now_1 = Instant::now();
-    let part1 = solve_day_15_part1(INPUT);
+    let part1 = solve_day_16_part1(INPUT);
 
     println!("part 1 - Result -> {}", part1);
 
@@ -15,7 +15,7 @@ fn main() {
     println!("Part 1 - Elapsed: {:.2?}", elapsed_1);
 
     let now_2 = Instant::now();
-    let part2 = solve_day_15_part2(INPUT);
+    let part2 = solve_day_16_part2(INPUT);
 
     println!("part2 - Result -> {}", part2);
 
@@ -23,7 +23,7 @@ fn main() {
     println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
 }
 
-fn solve_day_15_part2(input: &str) -> u64 {
+fn solve_day_16_part2(input: &str) -> u64 {
     let grid: HashMap<(i32, i32), Tile> = input
         .lines()
         .enumerate()
@@ -59,7 +59,7 @@ fn solve_day_15_part2(input: &str) -> u64 {
     .unwrap()
 }
 
-fn solve_day_15_part1(input: &str) -> u64 {
+fn solve_day_16_part1(input: &str) -> u64 {
     let grid: HashMap<(i32, i32), Tile> = input
         .lines()
         .enumerate()
@@ -220,9 +220,9 @@ const EXAMPLE_DATA_1: &str = include_str!("../test1.txt");
 
 #[test]
 fn example() {
-    let part1 = solve_day_15_part1(EXAMPLE_DATA_1);
+    let part1 = solve_day_16_part1(EXAMPLE_DATA_1);
     assert_eq!(part1, 46);
 
-    let part2 = solve_day_15_part2(EXAMPLE_DATA_1);
+    let part2 = solve_day_16_part2(EXAMPLE_DATA_1);
     assert_eq!(part2, 51);
 }
