@@ -1,4 +1,11 @@
-use std::{collections::HashMap, ops::Deref, str::FromStr, sync::Arc, time::Instant};
+use std::{
+    collections::{HashMap, VecDeque},
+    iter::zip,
+    ops::Deref,
+    str::FromStr,
+    sync::Arc,
+    time::Instant,
+};
 
 const INPUT: &str = include_str!("../input.txt");
 
@@ -11,13 +18,13 @@ fn main() {
     let elapsed_1 = now_1.elapsed();
     println!("Part 1 - Elapsed: {:.2?}", elapsed_1);
 
-    // let now_2 = Instant::now();
-    // let part2 = solve_day_17_part2(INPUT);
+    let now_2 = Instant::now();
+    let part2 = solve_day_17_part2(INPUT);
 
-    // println!("part2 - Result -> {}", part2);
+    println!("part2 - Result -> {}", part2);
 
-    // let elapsed_2 = now_2.elapsed();
-    // println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
+    let elapsed_2 = now_2.elapsed();
+    println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
 }
 
 #[cfg(test)]
@@ -28,13 +35,59 @@ fn example() {
     let part1 = solve_day_17_part1(EXAMPLE_DATA_1);
     assert_eq!(part1, 19114);
 
-    // let part2 = solve_day_17_part2(EXAMPLE_DATA_1);
-    // assert_eq!(part2, 167409079868000);
+    let part2 = solve_day_17_part2(EXAMPLE_DATA_1);
+    assert_eq!(part2, 167409079868000);
 }
 
-// fn solve_day_17_part2(input: &str) -> u64 {
-//     0
-// }
+fn solve_day_17_part2(input: &str) -> u128 {
+    if let Some((workflows_str, _)) = input.split_once("\n\n") {
+        let mut workflow: HashMap<Box<str>, Workflow> = workflows_str
+            .lines()
+            .map(|l| Workflow::from_str(l).unwrap())
+            .map(|w| (w.name.clone(), w))
+            .collect();
+        workflow.remove("R");
+        workflow.remove("A");
+        let mut parts: VecDeque<FullPart> = vec![FullPart::new()].into();
+
+        let mut accepted = Vec::<FullPart>::new();
+
+        while let Some(p) = parts.pop_back() {
+            if p.current_w.deref() == "A" {
+                accepted.push(p)
+            } else if p.current_w.deref() != "R" && p.is_valid() {
+                let w = workflow.get(p.current_w.deref()).unwrap();
+                let mut current_part = p.clone();
+                for s in w.steps.iter() {
+                    let new_parts = current_part.apply_step(s);
+                    if let Some(new_p) = new_parts.1 {
+                        parts.push_front(new_p);
+                        if let Some(pp) = new_parts.0 {
+                            current_part = pp;
+                        }
+                    } else {
+                        if let Some(mut new_p) = new_parts.0 {
+                            new_p.current_w = s.next.clone();
+                            parts.push_front(new_p);
+                        }
+                    }
+                }
+            }
+        }
+
+        accepted
+            .iter()
+            .map(|a| {
+                (a.ratings_max[0] - a.ratings_min[0] + 1) as u128
+                    * (a.ratings_max[1] - a.ratings_min[1] + 1) as u128
+                    * (a.ratings_max[2] - a.ratings_min[2] + 1) as u128
+                    * (a.ratings_max[3] - a.ratings_min[3] + 1) as u128
+            })
+            .sum()
+    } else {
+        0
+    }
+}
 
 fn solve_day_17_part1(input: &str) -> u32 {
     if let Some((workflows_str, parts_str)) = input.split_once("\n\n") {
@@ -158,6 +211,57 @@ impl FromStr for Step {
 struct Part {
     ratings: Vec<u32>,
     current_w: Box<str>,
+}
+
+#[derive(Clone, Debug)]
+struct FullPart {
+    ratings_max: Vec<u32>,
+    ratings_min: Vec<u32>,
+    current_w: Box<str>,
+}
+
+impl FullPart {
+    fn new() -> FullPart {
+        FullPart {
+            ratings_max: vec![4000; 4],
+            ratings_min: vec![1; 4],
+            current_w: "in".into(),
+        }
+    }
+
+    fn is_valid(&self) -> bool {
+        zip(self.ratings_max.iter(), self.ratings_min.iter()).all(|(r_max, r_min)| r_max >= r_min)
+    }
+
+    fn apply_step(&self, s: &Step) -> (Option<FullPart>, Option<FullPart>) {
+        let mut part1 = self.clone();
+
+        if let Some(greater) = s.grater {
+            if let Some(rating) = s.rating {
+                let index = Workflow::rating_to_index(rating).unwrap();
+                if let Some(value) = s.value {
+                    let mut part2 = self.clone();
+                    let mut new_max = self.ratings_max.clone();
+                    let mut new_min = self.ratings_min.clone();
+                    part2.current_w = s.next.clone();
+                    if greater {
+                        // part2 rispetta la condizione
+                        new_max[index] = value;
+                        new_min[index] = value + 1;
+                        part1.ratings_max = new_max;
+                        part2.ratings_min = new_min;
+                    } else {
+                        new_max[index] = value - 1;
+                        new_min[index] = value;
+                        part2.ratings_max = new_max;
+                        part1.ratings_min = new_min;
+                    }
+                    return (Some(part1), Some(part2));
+                }
+            }
+        }
+        return (Some(part1), None);
+    }
 }
 
 impl FromStr for Part {
