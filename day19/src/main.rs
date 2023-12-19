@@ -4,7 +4,7 @@ use std::{
     ops::Deref,
     str::FromStr,
     sync::Arc,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 const INPUT: &str = include_str!("../input.txt");
@@ -25,6 +25,32 @@ fn main() {
 
     let elapsed_2 = now_2.elapsed();
     println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
+
+    // Benchmark
+    println!("\nBenchmark:");
+    let mut part1_v = Vec::<u128>::new();
+    let mut part2_v = Vec::<u128>::new();
+    for _ in 0..1000 {
+        let now_1 = Instant::now();
+        let part1 = solve_day_17_part1(INPUT);
+        let elapsed_1 = now_1.elapsed();
+        part1_v.push(elapsed_1.as_micros());
+        let _ = part1;
+
+        let now_2 = Instant::now();
+        let part2 = solve_day_17_part2(INPUT);
+        let elapsed_2 = now_2.elapsed();
+        part2_v.push(elapsed_2.as_micros());
+        let _ = part2;
+    }
+    println!(
+        "Part 1 - Avarage: {:.2?}",
+        part1_v.iter().sum::<u128>() / 1000 as u128
+    );
+    println!(
+        "Part 2 - Avarage: {:.2?}",
+        part2_v.iter().sum::<u128>() / 1000 as u128
+    );
 }
 
 #[cfg(test)]
