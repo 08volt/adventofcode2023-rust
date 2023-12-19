@@ -4,7 +4,7 @@ use std::{
     ops::Deref,
     str::FromStr,
     sync::Arc,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 const INPUT: &str = include_str!("../input.txt");
@@ -12,18 +12,14 @@ const INPUT: &str = include_str!("../input.txt");
 fn main() {
     let now_1 = Instant::now();
     let part1 = solve_day_17_part1(INPUT);
-
-    println!("part 1 - Result -> {}", part1);
-
     let elapsed_1 = now_1.elapsed();
+    println!("part 1 - Result -> {}", part1);
     println!("Part 1 - Elapsed: {:.2?}", elapsed_1);
 
     let now_2 = Instant::now();
     let part2 = solve_day_17_part2(INPUT);
-
-    println!("part2 - Result -> {}", part2);
-
     let elapsed_2 = now_2.elapsed();
+    println!("part2 - Result -> {}", part2);
     println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
 
     // Benchmark
