@@ -82,7 +82,6 @@ trait Module {
     fn receive_pulse(&mut self, inn: &Pulse) -> Vec<Pulse>;
 }
 
-#[derive(Clone)]
 struct Broadcast {
     name: Box<str>,
     dest: Vec<Box<str>>,
@@ -100,7 +99,6 @@ enum State {
     OFF,
 }
 
-#[derive(Clone)]
 struct FlipFlop {
     name: Box<str>,
     dest: Vec<Box<str>>,
@@ -116,7 +114,6 @@ impl Into<String> for &FlipFlop {
     }
 }
 
-#[derive(Clone)]
 struct Conjunction {
     name: Box<str>,
     dest: Vec<Box<str>>,
@@ -188,26 +185,23 @@ impl Module for Conjunction {
     }
 }
 
-#[derive(Clone)]
 struct MachineSet {
-    broadcaster: Broadcast,
-    ffs: HashMap<Box<str>, FlipFlop>,
-    conjs: HashMap<Box<str>, Conjunction>,
+    modules: HashMap<Box<str>, Box<dyn Module>>,
 }
 
 impl FromStr for MachineSet {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let modules: Vec<&str> = s.lines().map(|l| l.trim()).collect();
+        let modules_list: Vec<&str> = s.lines().map(|l| l.trim()).collect();
 
-        let conj_list: Vec<&str> = modules
+        let conj_list: Vec<&str> = modules_list
             .iter()
             .filter(|m| m.starts_with("&"))
             .map(|&s| s)
             .collect();
 
-        let mut conjs: HashMap<Box<str>, Conjunction> = conj_list
+        let mut conjs: HashMap<Box<str>, Box<Conjunction>> = conj_list
             .iter()
             .map(|f_str| {
                 let (name_str, dest_str) = f_str.split_once(" -> ").unwrap();
@@ -215,11 +209,11 @@ impl FromStr for MachineSet {
                 let dest: Vec<Box<str>> = dest_str.split(",").map(|n| n.trim().into()).collect();
                 (
                     name.clone(),
-                    Conjunction {
+                    Box::new(Conjunction {
                         name,
                         dest,
                         memory: HashMap::<Box<str>, Level>::new(),
-                    },
+                    }),
                 )
             })
             .collect();
@@ -242,7 +236,9 @@ impl FromStr for MachineSet {
                 .insert(inn.clone(), Level::LOW);
         });
 
-        let (_, dest_str) = modules
+        let mut modules = HashMap::<Box<str>, Box<dyn Module>>::new();
+
+        let (_, dest_str) = modules_list
             .iter()
             .find(|&m| m.starts_with("broadcaster"))
             .ok_or(())?
@@ -257,44 +253,44 @@ impl FromStr for MachineSet {
             });
         });
 
-        let broadcaster = Broadcast {
-            name: "broadcaster".into(),
-            dest,
-        };
+        modules.insert(
+            "broadcaster".into(),
+            Box::new(Broadcast {
+                name: "broadcaster".into(),
+                dest,
+            }),
+        );
 
-        let ffs_list: Vec<&str> = modules
+        let ffs_list: Vec<&str> = modules_list
             .iter()
             .filter(|m| m.starts_with("%"))
             .map(|&s| s)
             .collect();
 
-        let ffs: HashMap<Box<str>, FlipFlop> = ffs_list
-            .iter()
-            .map(|f_str| {
-                let (name_str, dest_str) = f_str.split_once(" -> ").unwrap();
-                let name: Box<str> = name_str.to_string()[1..].into();
-                let dest: Vec<Box<str>> = dest_str.split(",").map(|n| n.trim().into()).collect();
-                dest.iter().for_each(|d| {
-                    conjs.get_mut(d).map(|c| {
-                        c.memory.insert(name.clone(), Level::LOW);
-                    });
+        ffs_list.iter().for_each(|f_str| {
+            let (name_str, dest_str) = f_str.split_once(" -> ").unwrap();
+            let name: Box<str> = name_str.to_string()[1..].into();
+            let dest: Vec<Box<str>> = dest_str.split(",").map(|n| n.trim().into()).collect();
+            dest.iter().for_each(|d| {
+                conjs.get_mut(d).map(|c| {
+                    c.memory.insert(name.clone(), Level::LOW);
                 });
-                (
-                    name.clone(),
-                    FlipFlop {
-                        name: name,
-                        dest,
-                        state: State::OFF,
-                    },
-                )
-            })
-            .collect();
+            });
+            modules.insert(
+                name.clone(),
+                Box::new(FlipFlop {
+                    name: name,
+                    dest,
+                    state: State::OFF,
+                }),
+            );
+        });
 
-        Ok(MachineSet {
-            broadcaster,
-            ffs,
-            conjs,
-        })
+        for c in conjs.into_values() {
+            modules.insert(c.name.clone(), c);
+        }
+
+        Ok(MachineSet { modules })
     }
 }
 
@@ -313,38 +309,21 @@ impl MachineSet {
 
         while let Some(p) = pulses_to_process.pop_front() {
             // println!(" {}  -{:?}-> {} ", p.from, p.level, p.destination);
-            let new_pulses: Vec<Pulse> = match &p.destination {
-                dest if self.ffs.contains_key(dest) => {
-                    let ff: &mut FlipFlop = self.ffs.get_mut(dest).unwrap();
-                    ff.receive_pulse(&p)
-                }
-                dest if self.conjs.contains_key(dest) => {
-                    let conj: &mut Conjunction = self.conjs.get_mut(dest).unwrap();
-                    let res = conj.receive_pulse(&p);
-                    if dest.deref() == "jq" {
-                        conj.memory
-                            .iter()
-                            .filter(|&(_, l)| l.clone() == Level::HIGH)
-                            .for_each(|(n, _)| {
-                                memory.insert(n.clone(), i.clone());
-                            })
-                    }
-                    res
-                }
-                dest if *dest == "broadcaster".into() => self.broadcaster.receive_pulse(&p),
-                _ => {
-                    vec![]
-                }
-            };
+            if let Some(m) = self.modules.get_mut(p.destination.deref()) {
+                let new_pulses: Vec<Pulse> = m.receive_pulse(&p);
+                if p.destination.deref() == "jq" && p.level == Level::HIGH {
+                    memory.insert(p.from.clone(), i.clone());
+                };
 
-            new_pulses
-                .iter()
-                .for_each(|p| pulses_to_process.push_back(p.clone()));
+                new_pulses
+                    .iter()
+                    .for_each(|p| pulses_to_process.push_back(p.clone()));
 
-            pulses_sent = new_pulses.iter().fold(pulses_sent, |p, n| match n.level {
-                Level::HIGH => (p.0 + 1, p.1),
-                Level::LOW => (p.0, p.1 + 1),
-            });
+                pulses_sent = new_pulses.iter().fold(pulses_sent, |p, n| match n.level {
+                    Level::HIGH => (p.0 + 1, p.1),
+                    Level::LOW => (p.0, p.1 + 1),
+                });
+            }
 
             // let m_str: String = (&self.clone()).into();
             // println!("{}", m_str);
@@ -355,38 +334,6 @@ impl MachineSet {
     }
 }
 
-impl Into<String> for &MachineSet {
-    fn into(self) -> String {
-        let mut res: String = String::new();
-
-        res += ("\nbroadcast -> ".to_string() + self.broadcaster.dest.join(" ").as_str() + "\n")
-            .as_str();
-
-        res += ("flipflops -> ".to_string()
-            + self
-                .ffs
-                .values()
-                .map(|f| f.into())
-                .collect::<Vec<String>>()
-                .join("\n")
-                .as_str()
-            + "\n")
-            .as_str();
-
-        res += ("conjunctions -> ".to_string()
-            + self
-                .conjs
-                .values()
-                .map(|f| f.into())
-                .collect::<Vec<String>>()
-                .join("\n")
-                .as_str()
-            + "\n")
-            .as_str();
-
-        res
-    }
-}
 fn solve_day_20_part2(input: &str) -> u128 {
     let mut machines = MachineSet::from_str(input).unwrap();
 
