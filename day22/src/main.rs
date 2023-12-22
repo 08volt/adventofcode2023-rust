@@ -58,14 +58,18 @@ struct Brick {
 
 impl Brick {
     fn can_fall(&self, occupied_positions: &HashSet<(u32, u32, u32)>) -> bool {
-        self.block_positions
-            .iter()
-            .all(|pos| pos.2 > 1 && !occupied_positions.contains(&(pos.0, pos.1, pos.2 - 1)))
+        self.block_positions.iter().all(|pos| {
+            let new_pos = (pos.0, pos.1, pos.2 - 1);
+
+            pos.2 > 1
+                && (self.block_positions.contains(&new_pos)
+                    || !occupied_positions.contains(&new_pos))
+        })
     }
 
     fn go_down(&mut self, occupied_positions: &HashSet<(u32, u32, u32)>) -> Vec<(u32, u32, u32)> {
         if self.can_fall(occupied_positions) {
-            println!("{:?} can fall", self.block_positions);
+            // println!("{:?} can fall", self.block_positions);
 
             self.block_positions = self
                 .block_positions
@@ -73,7 +77,7 @@ impl Brick {
                 .map(|pos| (pos.0, pos.1, pos.2 - 1))
                 .collect();
 
-            println!("{:?} new position\n", self.block_positions);
+            // println!("{:?} new position\n", self.block_positions);
         }
 
         self.block_positions
@@ -94,7 +98,7 @@ impl Brick {
             .collect();
         let positions = Self::compute_positions(&new_bricks);
         let safe = new_bricks.into_iter().all(|b| !b.can_fall(&positions));
-        println!("block {:?} is safe: {}", self.block_positions, safe);
+        // println!("block {:?} is safe: {}", self.block_positions, safe);
         safe
     }
 
@@ -146,7 +150,7 @@ fn solve_day_20_part1(input: &str) -> u32 {
 
     while can_fall {
         let start_position = Brick::compute_positions(&bricks);
-        println!("start_positions= {start_position:?}\n");
+        // println!("start_positions= {start_position:?}\n");
         let mut new_positions = HashSet::<(u32, u32, u32)>::new();
 
         bricks.iter_mut().for_each(|b| {
