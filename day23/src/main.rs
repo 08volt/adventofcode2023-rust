@@ -14,11 +14,11 @@ fn main() {
     println!("part 1 - Result -> {}", part1);
     println!("Part 1 - Elapsed: {:.2?}", elapsed_1);
 
-    // let now_2 = Instant::now();
-    // let part2 = solve_day_23_part1(INPUT, 26501365);
-    // let elapsed_2 = now_2.elapsed();
-    // println!("part2 - Result -> {}", part2);
-    // println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
+    let now_2 = Instant::now();
+    let part2 = solve_day_23_part2(INPUT, (0, 1), (140, 139));
+    let elapsed_2 = now_2.elapsed();
+    println!("part2 - Result -> {}", part2);
+    println!("Part 2 - Elapsed: {:.2?}", elapsed_2);
 
     // // Benchmark
     // println!("\nBenchmark:");
@@ -54,6 +54,9 @@ const EXAMPLE_DATA_1: &str = include_str!("../test1.txt");
 fn example() {
     let part1 = solve_day_23_part1(EXAMPLE_DATA_1, (0, 1), (22, 21));
     assert_eq!(part1, 94);
+
+    let part2 = solve_day_23_part2(EXAMPLE_DATA_1, (0, 1), (22, 21));
+    assert_eq!(part2, 154);
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -99,7 +102,7 @@ struct Path {
 }
 
 impl Path {
-    fn walk(&mut self, map: &Map) -> Option<Self> {
+    fn walk_slip(&mut self, map: &Map) -> Option<Self> {
         match map.tiles.get(&self.current)? {
             Tile::Path => {
                 // look for more than one dir
@@ -142,6 +145,35 @@ impl Path {
                 }
                 None
             }
+        }
+    }
+
+    fn walk(&self, map: &Map) -> Vec<Self> {
+        match map.tiles.get(&self.current).unwrap() {
+            Tile::Path | Tile::Slope(_) => {
+                // look for more than one dir
+                Direction::get_as_vec()
+                    .iter()
+                    .map(|d| {
+                        let pos = d.walk(self.current);
+                        let possible_pos = match map.tiles.get(&pos) {
+                            Some(t) => match t {
+                                Tile::Path | Tile::Slope(_) => true,
+                                Tile::Forest => false,
+                            },
+                            None => false,
+                        } && !self.past.contains(&pos);
+                        (pos, possible_pos)
+                    })
+                    .filter(|(_, pp)| pp.clone())
+                    .map(|(current, _)| {
+                        let mut past = self.past.clone();
+                        past.insert(self.current);
+                        Path { past, current }
+                    })
+                    .collect()
+            }
+            Tile::Forest => Vec::<Path>::new(),
         }
     }
 }
@@ -190,7 +222,7 @@ fn solve_day_23_part1(input: &str, start_pos: (i64, i64), end_pos: (i64, i64)) -
 
     while let Some(mut p) = paths.pop_back() {
         let start_pos = p.current;
-        let new_p = p.walk(&map);
+        let new_p = p.walk_slip(&map);
         // println!("\n{start_pos:?} -> {:?}", p.current);
         if p.current != start_pos {
             if p.current == end_pos {
@@ -204,6 +236,33 @@ fn solve_day_23_part1(input: &str, start_pos: (i64, i64), end_pos: (i64, i64)) -
         // }
         if let Some(new_p) = new_p {
             paths.push_front(new_p);
+        }
+    }
+
+    results.iter().map(|r| r.past.len()).max().unwrap() as u64
+}
+
+fn solve_day_23_part2(input: &str, start_pos: (i64, i64), end_pos: (i64, i64)) -> u64 {
+    let map: Map = Map::from_str(input).unwrap();
+    let mut paths = VecDeque::<Path>::new();
+
+    let mut results = VecDeque::<Path>::new();
+
+    paths.push_front(Path {
+        past: HashSet::<(i64, i64)>::new(),
+        current: start_pos,
+    });
+
+    while let Some(p) = paths.pop_back() {
+        let mut new_p = p.walk(&map);
+        // print!("\n\n{:?} -> ", p.current);
+        while let Some(pp) = new_p.pop() {
+            // print!("{:?} | ", pp.current);
+            if pp.current == end_pos {
+                results.push_back(pp)
+            } else {
+                paths.push_front(pp);
+            }
         }
     }
 
