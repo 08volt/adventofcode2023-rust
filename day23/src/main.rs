@@ -147,35 +147,6 @@ impl Path {
             }
         }
     }
-
-    fn walk(&self, map: &Map) -> Vec<Self> {
-        match map.tiles.get(&self.current).unwrap() {
-            Tile::Path | Tile::Slope(_) => {
-                // look for more than one dir
-                Direction::get_as_vec()
-                    .iter()
-                    .map(|d| {
-                        let pos = d.walk(self.current);
-                        let possible_pos = match map.tiles.get(&pos) {
-                            Some(t) => match t {
-                                Tile::Path | Tile::Slope(_) => true,
-                                Tile::Forest => false,
-                            },
-                            None => false,
-                        } && !self.past.contains(&pos);
-                        (pos, possible_pos)
-                    })
-                    .filter(|(_, pp)| pp.clone())
-                    .map(|(current, _)| {
-                        let mut past = self.past.clone();
-                        past.insert(self.current);
-                        Path { past, current }
-                    })
-                    .collect()
-            }
-            Tile::Forest => Vec::<Path>::new(),
-        }
-    }
 }
 
 struct Map {
@@ -223,6 +194,7 @@ fn solve_day_23_part1(input: &str, start_pos: (i64, i64), end_pos: (i64, i64)) -
     while let Some(mut p) = paths.pop_back() {
         let start_pos = p.current;
         let new_p = p.walk_slip(&map);
+
         // println!("\n{start_pos:?} -> {:?}", p.current);
         if p.current != start_pos {
             if p.current == end_pos {
@@ -231,6 +203,7 @@ fn solve_day_23_part1(input: &str, start_pos: (i64, i64), end_pos: (i64, i64)) -
                 paths.push_front(p);
             }
         }
+
         // else {
         //     println!("STOP!!!!")
         // }
@@ -244,27 +217,40 @@ fn solve_day_23_part1(input: &str, start_pos: (i64, i64), end_pos: (i64, i64)) -
 
 fn solve_day_23_part2(input: &str, start_pos: (i64, i64), end_pos: (i64, i64)) -> u64 {
     let map: Map = Map::from_str(input).unwrap();
-    let mut paths = VecDeque::<Path>::new();
+    let paths = VecDeque::<(i32, i32)>::new();
 
-    let mut results = VecDeque::<Path>::new();
+    let mut distance_map = HashMap::<(i64, i64), u32>::new();
 
-    paths.push_front(Path {
-        past: HashSet::<(i64, i64)>::new(),
-        current: start_pos,
-    });
+    let mut active_pos = VecDeque::<(i64, i64)>::new();
 
-    while let Some(p) = paths.pop_back() {
-        let mut new_p = p.walk(&map);
-        // print!("\n\n{:?} -> ", p.current);
-        while let Some(pp) = new_p.pop() {
-            // print!("{:?} | ", pp.current);
-            if pp.current == end_pos {
-                results.push_back(pp)
-            } else {
-                paths.push_front(pp);
-            }
+    active_pos.push_back(start_pos);
+    distance_map.insert(start_pos.clone(), 0);
+
+    while let Some(current_pos) = active_pos.pop_front() {
+        let current_count = distance_map.get(&current_pos).unwrap().clone();
+        let next_pos: Vec<(i64, i64)> = Direction::get_as_vec()
+            .iter()
+            .map(|d| d.walk(current_pos))
+            .filter(|np| match map.tiles.get(np) {
+                Some(t) => match t {
+                    Tile::Path | Tile::Slope(_) => true,
+                    Tile::Forest => false,
+                },
+                None => false,
+            })
+            .filter(|np| {
+                !&distance_map.contains_key(np)
+                    || (&distance_map.get(np).unwrap().clone() < &(current_count + 1))
+            })
+            .collect();
+
+        for np in next_pos {
+            distance_map.insert(np, current_count + 1);
+            active_pos.push_back(np);
         }
     }
 
-    results.iter().map(|r| r.past.len()).max().unwrap() as u64
+    println!("{:?}", distance_map);
+
+    distance_map.get(&end_pos).unwrap().clone().into()
 }
